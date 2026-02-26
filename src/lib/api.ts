@@ -238,6 +238,11 @@ export async function createStudent(data: { rollNo: string; name: string }): Pro
   return request<Student>("/students", { method: "POST", body: data });
 }
 
+/** DELETE /students/:id – requires Bearer token (same as curl -X DELETE -H "Authorization: Bearer TOKEN") */
+export async function deleteStudent(studentId: string): Promise<void> {
+  await request(`/students/${encodeURIComponent(studentId)}`, { method: "DELETE" });
+}
+
 // ——— Attendance ———
 // GET  /attendance?date=YYYY-MM-DD – ek date ki attendance
 // GET  /attendance/records?year=YYYY&month=M – month ka sara record (table)

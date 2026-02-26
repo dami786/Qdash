@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
-import { fetchStudents, createStudent, type Student } from "@/lib/api";
+import { fetchStudents, createStudent, deleteStudent, type Student } from "@/lib/api";
 
 export default function StudentsPage() {
   const [students, setStudents] = useState<Student[]>([]);
@@ -11,6 +11,7 @@ export default function StudentsPage() {
   const [form, setForm] = useState({ rollNo: "", name: "" });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   function load() {
     setLoading(true);
@@ -43,6 +44,21 @@ export default function StudentsPage() {
       toast.error(msg);
     } finally {
       setSubmitting(false);
+    }
+  }
+
+  async function handleDelete(s: Student) {
+    if (!s.id) return;
+    if (!confirm(`Delete student "${s.name}" (${s.rollNo})? This cannot be undone.`)) return;
+    setDeletingId(s.id);
+    try {
+      await deleteStudent(s.id);
+      load();
+      toast.success("Student deleted");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to delete");
+    } finally {
+      setDeletingId(null);
     }
   }
 
@@ -137,19 +153,20 @@ export default function StudentsPage() {
               />
             </div>
             <div className="overflow-x-auto overflow-y-auto max-h-[65vh] scrollbar-hide -mx-px">
-              <table className="w-full min-w-[400px]">
+              <table className="table-modern w-full min-w-[400px]">
                 <thead className="bg-slate-50/80 border-b border-slate-200">
                   <tr>
                     <th className="text-left py-3 px-4 text-slate-600 font-medium">Roll No</th>
                     <th className="text-left py-3 px-4 text-slate-600 font-medium">Name</th>
                     <th className="text-left py-3 px-4 text-slate-600 font-medium">Student ID</th>
                     <th className="text-left py-3 px-4 text-slate-600 font-medium">Created</th>
+                    <th className="text-left py-3 px-4 text-slate-600 font-medium w-24">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredStudents.length === 0 ? (
                     <tr>
-                      <td colSpan={4} className="py-6 px-4 text-center text-slate-500">
+                      <td colSpan={5} className="py-6 px-4 text-center text-slate-500">
                         No matches for &quot;{search}&quot;
                       </td>
                     </tr>
@@ -164,6 +181,16 @@ export default function StudentsPage() {
                         <td className="py-3 px-4 text-slate-600 text-xs break-all">{s.id}</td>
                         <td className="py-3 px-4 text-slate-600">
                           {formatDate(s.createdAt || s.created_at)}
+                        </td>
+                        <td className="py-3 px-4">
+                          <button
+                            type="button"
+                            onClick={() => handleDelete(s)}
+                            disabled={deletingId === s.id}
+                            className="text-red-600 hover:text-red-700 text-sm font-medium disabled:opacity-50"
+                          >
+                            {deletingId === s.id ? "Deleting..." : "Delete"}
+                          </button>
                         </td>
                       </tr>
                     ))

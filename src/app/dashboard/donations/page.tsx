@@ -82,7 +82,7 @@ export default function DonationsPage() {
             />
           </div>
           <div className="overflow-x-auto overflow-y-auto max-h-[65vh] scrollbar-hide">
-            <table className="w-full min-w-[600px]">
+            <table className="table-modern w-full min-w-[600px]">
               <thead className="bg-slate-50/80 border-b border-slate-200">
                 <tr>
                   <th className="text-left py-3 px-4 text-slate-600 font-medium">Name</th>

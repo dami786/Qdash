@@ -9,24 +9,40 @@ import {
   fetchStudents,
 } from "@/lib/api";
 
+function getGreeting() {
+  const h = new Date().getHours();
+  if (h < 12) return "Good morning";
+  if (h < 17) return "Good afternoon";
+  return "Good evening";
+}
+
+function getDateLabel() {
+  return new Date().toLocaleDateString("en-GB", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+}
+
 const cardConfig = [
   {
     label: "Free Trials",
     href: "/dashboard/trials",
     icon: UserPlusIcon,
-    gradient: "from-emerald-500 to-emerald-700",
-    bgLight: "bg-emerald-50",
-    borderColor: "border-emerald-200",
-    textColor: "text-emerald-700",
+    gradient: "from-emerald-500 to-teal-600",
+    bgGradient: "from-emerald-500/20 to-teal-500/10",
+    ring: "ring-emerald-500/20",
+    textColor: "text-emerald-600",
   },
   {
     label: "Donations",
     href: "/dashboard/donations",
     icon: HeartIcon,
-    gradient: "from-amber-500 to-amber-600",
-    bgLight: "bg-amber-50",
-    borderColor: "border-amber-200",
-    textColor: "text-amber-700",
+    gradient: "from-amber-500 to-orange-500",
+    bgGradient: "from-amber-500/20 to-orange-500/10",
+    ring: "ring-amber-500/20",
+    textColor: "text-amber-600",
   },
 ];
 
@@ -52,13 +68,6 @@ function StudentsIcon({ className }: { className?: string }) {
     </svg>
   );
 }
-function ChartBarIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-    </svg>
-  );
-}
 
 export default function DashboardOverview() {
   const [counts, setCounts] = useState({
@@ -71,7 +80,10 @@ export default function DashboardOverview() {
 
   useEffect(() => {
     const token = typeof window !== "undefined" ? localStorage.getItem("babul_islam_token") : null;
-    if (!token) return;
+    if (!token) {
+      setLoading(false);
+      return;
+    }
     Promise.all([
       fetchStudents().then((d) => (Array.isArray(d) ? d.length : 0)),
       fetchItems().then((d) => (Array.isArray(d) ? d.length : 0)),
@@ -86,82 +98,100 @@ export default function DashboardOverview() {
   }, []);
 
   const countKeys = ["courses", "trials", "donations"] as const;
-  const maxChart = Math.max(
-    counts.students,
-    counts.trials,
-    counts.donations,
-    1
-  );
+  const total = counts.students + counts.trials + counts.donations;
   const chartData = [
-    { name: "Students", value: counts.students, color: "bg-primary-500", label: "Students" },
-    { name: "Trials", value: counts.trials, color: "bg-emerald-500", label: "Trials" },
-    { name: "Donations", value: counts.donations, color: "bg-amber-500", label: "Donations" },
+    { name: "Students", value: counts.students, color: "from-teal-500 to-cyan-500", fill: "#0d9488" },
+    { name: "Trials", value: counts.trials, color: "from-emerald-500 to-teal-500", fill: "#10b981" },
+    { name: "Donations", value: counts.donations, color: "from-amber-500 to-orange-500", fill: "#f59e0b" },
   ];
 
+  const donutSegments = chartData.map((item) => ({
+    ...item,
+    pct: total > 0 ? (item.value / total) * 100 : 0,
+  }));
+  let donutOffset = 0;
+  const gradientStops =
+    total > 0
+      ? donutSegments
+          .map((seg) => {
+            if (seg.pct <= 0) return null;
+            const start = donutOffset;
+            const end = donutOffset + seg.pct;
+            donutOffset = end;
+            return `${seg.fill} ${start}% ${end}%`;
+          })
+          .filter(Boolean)
+          .join(", ")
+      : "#e2e8f0 0% 100%";
+
   return (
-    <div className="space-y-6 sm:space-y-8 min-w-0">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
-        <div>
-          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-slate-800 tracking-tight">
-            Overview
+    <div className="min-w-0 space-y-8 sm:space-y-10">
+      {/* Hero / Welcome */}
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-800 via-slate-800 to-teal-900/90 px-6 py-8 sm:px-8 sm:py-10 shadow-xl">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(20,184,166,0.15),transparent)] pointer-events-none" />
+        <div className="absolute right-0 top-0 h-full w-1/3 bg-gradient-to-l from-white/5 to-transparent pointer-events-none" />
+        <div className="relative">
+          <p className="text-teal-300/90 text-sm font-medium uppercase tracking-widest">
+            {getDateLabel()}
+          </p>
+          <h1 className="mt-1 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+            {getGreeting()}
           </h1>
-          <p className="text-slate-500 text-sm mt-1">
-            Quick stats and activity at a glance
+          <p className="mt-1 text-slate-400 text-sm">
+            Here’s what’s happening across your dashboard today.
           </p>
         </div>
       </div>
 
-      {/* Total Students – prominent card */}
-      <section className="relative overflow-hidden bg-white rounded-2xl border border-slate-200/80 shadow-card min-w-0">
-        <div className="absolute inset-0 bg-gradient-to-br from-primary-500/5 via-transparent to-primary-600/10 pointer-events-none" />
-        <div className="relative p-4 sm:p-6 md:p-8">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 sm:gap-6">
-            <div className="flex items-center gap-4">
-              <div className="w-14 h-14 rounded-2xl bg-primary-100 border border-primary-200 flex items-center justify-center shrink-0">
-                <StudentsIcon className="w-8 h-8 text-primary-600" />
-              </div>
-              <div>
-                <p className="text-slate-500 text-sm font-medium uppercase tracking-wider">
-                  Total Students
-                </p>
-                {loading ? (
-                  <div className="h-9 w-20 bg-slate-200 rounded-lg animate-pulse mt-1" />
-                ) : (
-                  <p className="text-3xl md:text-4xl font-bold text-slate-800 tabular-nums mt-0.5">
-                    {counts.students}
-                  </p>
-                )}
-                <p className="text-slate-400 text-xs mt-1">
-                  Updates as you add students
-                </p>
-              </div>
+      {/* Total Students – hero stat */}
+      <section className="group relative overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-lg shadow-slate-200/50 transition-all duration-300 hover:shadow-xl hover:shadow-slate-200/60 min-w-0">
+        <div className="absolute inset-0 bg-gradient-to-br from-teal-500/[0.06] via-transparent to-cyan-500/[0.06] pointer-events-none" />
+        <div className="absolute -right-12 -top-12 h-40 w-40 rounded-full bg-teal-400/10 blur-2xl transition-all group-hover:bg-teal-400/20" />
+        <div className="relative flex flex-col gap-6 p-6 sm:flex-row sm:items-center sm:justify-between sm:p-8">
+          <div className="flex items-center gap-5">
+            <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl border border-teal-200/80 bg-gradient-to-br from-teal-50 to-cyan-50 shadow-inner">
+              <StudentsIcon className="h-9 w-9 text-teal-600" />
             </div>
-            <Link
-              href="/dashboard/students"
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary-600 text-white text-sm font-semibold hover:bg-primary-700 transition-colors shrink-0"
-            >
-              View students
-              <span className="text-primary-200">→</span>
-            </Link>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                Total Students
+              </p>
+              {loading ? (
+                <div className="mt-1 h-10 w-24 animate-pulse rounded-lg bg-slate-200" />
+              ) : (
+                <p className="mt-0.5 text-4xl font-bold tabular-nums text-slate-900 sm:text-5xl">
+                  {counts.students}
+                </p>
+              )}
+              <p className="mt-1 text-xs text-slate-400">
+                Live count — updates as you add students
+              </p>
+            </div>
           </div>
+          <Link
+            href="/dashboard/students"
+            className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-teal-600 px-5 py-3 text-sm font-semibold text-white shadow-md shadow-teal-600/25 transition-all hover:bg-teal-700 hover:shadow-lg hover:shadow-teal-600/30"
+          >
+            View students
+            <span className="text-teal-200">→</span>
+          </Link>
         </div>
       </section>
 
-      {/* Stats cards grid */}
+      {/* Quick stats */}
       <div className="min-w-0">
-        <h2 className="text-base sm:text-lg font-semibold text-slate-800 mb-3 sm:mb-4">Quick stats</h2>
+        <h2 className="mb-4 text-lg font-semibold text-slate-800">Quick stats</h2>
         {loading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {[1, 2, 3].map((i) => (
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {[1, 2].map((i) => (
               <div
                 key={i}
-                className="h-36 bg-white rounded-2xl border border-slate-200/80 shadow-card animate-pulse"
+                className="h-40 animate-pulse rounded-2xl border border-slate-200/80 bg-slate-100/80"
               />
             ))}
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {cardConfig.map((card, i) => {
               const value = counts[countKeys[i]];
               const Icon = card.icon;
@@ -169,23 +199,21 @@ export default function DashboardOverview() {
                 <Link
                   key={card.href}
                   href={card.href}
-                  className="group block bg-white rounded-2xl border border-slate-200/80 shadow-card hover:shadow-card-hover hover:border-slate-300/80 transition-all duration-200 overflow-hidden"
+                  className="group relative overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-6 shadow-md shadow-slate-200/40 transition-all duration-300 hover:-translate-y-0.5 hover:border-slate-300/80 hover:shadow-lg hover:shadow-slate-300/50"
                 >
-                  <div className={`h-1 w-full bg-gradient-to-r ${card.gradient}`} />
-                  <div className="p-5">
-                    <div
-                      className={`w-11 h-11 rounded-xl ${card.bgLight} ${card.borderColor} border flex items-center justify-center mb-4 group-hover:scale-105 transition-transform duration-200`}
-                    >
-                      <Icon className={`w-6 h-6 ${card.textColor}`} />
+                  <div className={`absolute inset-0 bg-gradient-to-br ${card.bgGradient} opacity-0 transition-opacity duration-300 group-hover:opacity-100`} />
+                  <div className="relative flex items-start justify-between">
+                    <div className={`rounded-xl border bg-white/80 p-3 shadow-sm ring-2 ${card.ring} transition-transform duration-300 group-hover:scale-105`}>
+                      <Icon className={`h-7 w-7 ${card.textColor}`} />
                     </div>
-                    <p className="text-slate-500 text-sm font-medium">{card.label}</p>
-                    <p className="text-2xl font-bold text-slate-800 mt-0.5 tabular-nums">
-                      {value}
-                    </p>
-                    <p className="text-xs text-slate-400 mt-2 font-medium group-hover:text-primary-600 transition-colors">
+                    <span className="text-xs font-medium text-slate-400 transition-colors group-hover:text-slate-600">
                       View all →
-                    </p>
+                    </span>
                   </div>
+                  <p className="relative mt-4 text-sm font-medium text-slate-500">{card.label}</p>
+                  <p className="relative mt-0.5 text-3xl font-bold tabular-nums text-slate-800">
+                    {value}
+                  </p>
                 </Link>
               );
             })}
@@ -193,51 +221,68 @@ export default function DashboardOverview() {
         )}
       </div>
 
-      {/* Graph – bar chart */}
-      <section className="bg-white rounded-2xl border border-slate-200/80 shadow-card overflow-hidden min-w-0">
-        <div className="p-4 sm:p-5 md:p-6 border-b border-slate-200/80">
-          <div className="flex items-center gap-2">
-            <ChartBarIcon className="w-5 h-5 text-slate-500 shrink-0" />
-            <h2 className="text-base sm:text-lg font-semibold text-slate-800">Overview chart</h2>
-          </div>
-          <p className="text-slate-500 text-sm mt-1">
-            Students, trials & donations comparison
+      {/* Chart – donut overview (like analytics dashboards) */}
+      <section className="min-w-0 overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-lg shadow-slate-200/50">
+        <div className="border-b border-slate-200/80 bg-slate-50/50 px-6 py-5 sm:px-8">
+          <h2 className="text-lg font-semibold text-slate-800">Overview split</h2>
+          <p className="mt-0.5 text-sm text-slate-500">
+            Students, trials & donations — share of total
           </p>
         </div>
-        <div className="p-4 sm:p-5 md:p-6">
+        <div className="p-6 sm:p-8">
           {loading ? (
-            <div className="h-56 flex items-end gap-4">
-              {[1, 2, 3].map((i) => (
-                <div
-                  key={i}
-                  className="flex-1 bg-slate-200 rounded-t animate-pulse min-h-[80px]"
-                />
-              ))}
+            <div className="flex h-64 items-center justify-center gap-8">
+              <div className="h-40 w-40 sm:h-48 sm:w-48 animate-pulse rounded-full bg-slate-200/70" />
             </div>
           ) : (
-            <div className="flex flex-col gap-4">
-              <div className="h-52 flex items-end gap-6 sm:gap-8">
-                {chartData.map((item) => (
-                  <div
-                    key={item.name}
-                    className="flex-1 flex flex-col items-center gap-2 min-w-0"
-                  >
-                    <div
-                      className={`w-full max-w-[80px] rounded-t ${item.color} transition-all duration-500 ease-out`}
-                      style={{
-                        height: `${(item.value / maxChart) * 180}px`,
-                        minHeight: item.value > 0 ? "12px" : "0",
-                      }}
-                      title={`${item.label}: ${item.value}`}
-                    />
-                    <span className="text-xs font-medium text-slate-600 truncate w-full text-center">
-                      {item.label}
-                    </span>
-                    <span className="text-sm font-semibold text-slate-800 tabular-nums">
-                      {item.value}
-                    </span>
-                  </div>
-                ))}
+            <div className="flex flex-col items-center gap-8 md:flex-row">
+              <div className="relative h-40 w-40 sm:h-48 sm:w-48">
+                <div
+                  className="h-full w-full rounded-full bg-slate-100"
+                  style={{
+                    backgroundImage: `conic-gradient(${gradientStops})`,
+                  }}
+                />
+                <div className="absolute inset-7 sm:inset-8 flex flex-col items-center justify-center rounded-full bg-white shadow-inner">
+                  <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
+                    Total
+                  </p>
+                  <p className="mt-0.5 text-lg font-semibold tabular-nums text-slate-900">
+                    {total}
+                  </p>
+                </div>
+              </div>
+              <div className="flex-1 space-y-4">
+                {chartData.map((item) => {
+                  const pct = total > 0 ? Math.round((item.value / total) * 100) : 0;
+                  return (
+                    <div key={item.name} className="flex items-center justify-between gap-4">
+                      <div className="flex items-center gap-3">
+                        <span
+                          className="h-3 w-3 rounded-full"
+                          style={{ backgroundColor: item.fill }}
+                        />
+                        <span className="text-sm font-medium text-slate-700">
+                          {item.name}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className="text-sm font-semibold tabular-nums text-slate-800">
+                          {item.value}
+                        </span>
+                        <span className="text-xs font-medium text-slate-400">
+                          {pct}%
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+                {total === 0 && (
+                  <p className="text-sm text-slate-500">
+                    No data yet. Once you add students, trials or donations, this chart will
+                    update automatically.
+                  </p>
+                )}
               </div>
             </div>
           )}
