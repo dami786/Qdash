@@ -84,8 +84,8 @@ export default function TrialsPage() {
           No trial inquiries yet.
         </div>
       ) : (
-        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-card overflow-hidden">
-          <div className="p-4 border-b border-slate-200/80">
+        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-card overflow-hidden min-w-0">
+          <div className="p-3 sm:p-4 border-b border-slate-200/80">
             <input
               type="search"
               placeholder="Search by name, email, phone, course, message, status, source..."
@@ -94,7 +94,7 @@ export default function TrialsPage() {
               className="w-full max-w-md px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none text-sm"
             />
           </div>
-          <div className="overflow-auto max-h-[65vh] scrollbar-hide">
+          <div className="overflow-x-auto overflow-y-auto max-h-[65vh] scrollbar-hide">
             <table className="w-full min-w-[700px]">
               <thead className="bg-slate-50/80 border-b border-slate-200">
                 <tr>
@@ -188,4 +188,8 @@ export default function TrialsPage() {
               </button>
             </div>
           </div>
-        
+        </div>
+      )}
+    </div>
+  );
+}

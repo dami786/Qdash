@@ -87,15 +87,15 @@ export default function AttendanceReportsPage() {
 
   return (
     <>
-      <div className="space-y-10">
+      <div className="space-y-6 sm:space-y-10 min-w-0">
       <div>
-        <h1 className="text-2xl font-bold text-slate-800 tracking-tight">Attendance reports</h1>
+        <h1 className="text-xl sm:text-2xl font-bold text-slate-800 tracking-tight">Attendance reports</h1>
         <p className="text-slate-500 text-sm mt-1">Monthly records and summary</p>
       </div>
 
       {/* Monthly records */}
-      <section className="bg-white rounded-2xl border border-slate-200/80 shadow-card p-6">
-        <h2 className="text-lg font-semibold text-slate-800 mb-4">Monthly records</h2>
+      <section className="bg-white rounded-2xl border border-slate-200/80 shadow-card p-4 sm:p-6">
+        <h2 className="text-base sm:text-lg font-semibold text-slate-800 mb-3 sm:mb-4">Monthly records</h2>
         <div className="flex flex-wrap items-end gap-4 mb-4">
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">Year</label>
@@ -141,7 +141,7 @@ export default function AttendanceReportsPage() {
             className="w-full max-w-md px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none text-sm"
           />
         </div>
-        <div className="overflow-auto max-h-[65vh] scrollbar-hide">
+        <div className="overflow-x-auto overflow-y-auto max-h-[65vh] scrollbar-hide">
           <table className="w-full min-w-[500px]">
             <thead className="bg-slate-50/80 border-b border-slate-200">
               <tr>
@@ -188,8 +188,8 @@ export default function AttendanceReportsPage() {
       </section>
 
       {/* Monthly summary */}
-      <section className="bg-white rounded-2xl border border-slate-200/80 shadow-card p-6">
-        <h2 className="text-lg font-semibold text-slate-800 mb-4">Monthly summary</h2>
+      <section className="bg-white rounded-2xl border border-slate-200/80 shadow-card p-4 sm:p-6">
+        <h2 className="text-base sm:text-lg font-semibold text-slate-800 mb-3 sm:mb-4">Monthly summary</h2>
         <div className="flex flex-wrap items-end gap-4 mb-4">
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">Year</label>
@@ -240,7 +240,7 @@ export default function AttendanceReportsPage() {
             className="w-full max-w-md px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none text-sm"
           />
         </div>
-        <div className="overflow-auto max-h-[65vh] scrollbar-hide">
+        <div className="overflow-x-auto overflow-y-auto max-h-[65vh] scrollbar-hide">
           <table className="w-full min-w-[500px]">
             <thead className="bg-slate-50/80 border-b border-slate-200">
               <tr>

@@ -110,15 +110,15 @@ export default function AttendancePage() {
 
   return (
     <>
-      <div className="h-full min-h-0 flex flex-col gap-6 overflow-hidden">
+      <div className="h-full min-h-0 flex flex-col gap-4 sm:gap-6 overflow-hidden min-w-0">
       <div className="shrink-0">
-        <h1 className="text-2xl font-bold text-slate-800 tracking-tight">Attendance</h1>
+        <h1 className="text-xl sm:text-2xl font-bold text-slate-800 tracking-tight">Attendance</h1>
         <p className="text-slate-500 text-sm mt-1">By date & mark attendance</p>
       </div>
 
       {/* 1) Ek date ki attendance */}
-      <section className="shrink-0 bg-white rounded-2xl border border-slate-200/80 shadow-card p-6">
-        <h2 className="text-lg font-semibold text-slate-800 mb-4">Attendance by date</h2>
+      <section className="shrink-0 bg-white rounded-2xl border border-slate-200/80 shadow-card p-4 sm:p-6">
+        <h2 className="text-base sm:text-lg font-semibold text-slate-800 mb-3 sm:mb-4">Attendance by date</h2>
         <div className="flex flex-wrap items-end gap-4 mb-4">
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">Date</label>
@@ -152,7 +152,7 @@ export default function AttendancePage() {
                 className="w-full max-w-md px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none text-sm"
               />
             </div>
-            <div className="overflow-auto max-h-[65vh] scrollbar-hide">
+            <div className="overflow-x-auto overflow-y-auto max-h-[65vh] scrollbar-hide">
             <table className="w-full min-w-[400px]">
               <thead className="bg-slate-50/80 border-b border-slate-200">
                 <tr>
@@ -201,8 +201,8 @@ export default function AttendancePage() {
       </section>
 
       {/* Mark attendance – only this table scrolls (x/y), page stays fixed */}
-      <section className="flex-1 min-h-0 flex flex-col bg-white rounded-2xl border border-slate-200/80 shadow-card p-6">
-        <h2 className="text-lg font-semibold text-slate-800 mb-4 shrink-0">Mark attendance</h2>
+      <section className="flex-1 min-h-0 flex flex-col bg-white rounded-2xl border border-slate-200/80 shadow-card p-4 sm:p-6">
+        <h2 className="text-base sm:text-lg font-semibold text-slate-800 mb-3 sm:mb-4 shrink-0">Mark attendance</h2>
         <form onSubmit={handleMarkSubmit} className="flex-1 min-h-0 flex flex-col">
           <div className="shrink-0 flex flex-wrap items-end gap-4 mb-4">
             <div>
@@ -239,7 +239,7 @@ export default function AttendancePage() {
                   className="w-full max-w-md px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none text-sm"
                 />
               </div>
-              <div className="flex-1 min-h-0 overflow-auto scrollbar-hide">
+              <div className="flex-1 min-h-0 overflow-x-auto overflow-y-auto scrollbar-hide">
                 <table className="w-full min-w-[400px]">
                   <thead className="bg-slate-50/80 border-b border-slate-200">
                     <tr>
