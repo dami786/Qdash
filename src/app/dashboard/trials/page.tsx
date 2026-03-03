@@ -132,7 +132,7 @@ export default function TrialsPage() {
               </thead>
               <tbody>
                 {filteredTrials.map((t) => {
-                  const created = t.createdAt || t.created_at || "";
+                  const created = t.createdAt || t.created_at || (t as any).date || "";
                   const createdFormatted = created ? formatDate(created) : "—";
                   const isPending = t.status === "pending";
                   return (

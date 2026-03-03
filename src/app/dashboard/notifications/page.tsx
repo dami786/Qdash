@@ -126,7 +126,7 @@ export default function NotificationsPage() {
               </thead>
               <tbody>
                 {notifications.map((n) => {
-                  const created = n.createdAt || n.created_at || "";
+                  const created = n.createdAt || n.created_at || (n as any).date || "";
                   const createdFormatted = created ? formatDate(created) : "—";
                   const isRead = n.read === true || n.is_read === true || n.isRead === true;
                   return (

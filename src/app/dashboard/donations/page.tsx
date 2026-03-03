@@ -16,11 +16,34 @@ function formatDate(s?: string) {
   }
 }
 
-// For donations we trust backend's receiptUrl as-is
+// Resolve receipt image URL from API response
 function getReceiptUrl(d: Donation): string | null {
-  const raw = (d as any).receiptUrl ?? d.receipt_url ?? d.receipt ?? null;
+  // Common explicit fields first
+  let raw: unknown =
+    (d as any).receiptUrl ?? d.receipt_url ?? d.receipt ?? (d as any).receiptURL ?? null;
+
+  // Fallback: try to find any string field whose key contains "receipt"
+  if (!raw || typeof raw !== "string") {
+    for (const [key, value] of Object.entries(d as any)) {
+      if (typeof value === "string" && key.toLowerCase().includes("receipt") && value) {
+        raw = value;
+        break;
+      }
+    }
+  }
+
   if (!raw || typeof raw !== "string") return null;
-  return raw;
+
+  // If backend sends full URL, use as-is
+  if (raw.startsWith("http://") || raw.startsWith("https://")) return raw;
+
+  // Otherwise treat as relative path and build from API base origin
+  const apiBase =
+    process.env.NEXT_PUBLIC_API_URL || "https://quranacd-production-ddd5.up.railway.app/api";
+  // Strip trailing /api so that /uploads/... works correctly
+  const origin = apiBase.replace(/\/api\/?$/, "");
+  const path = raw.startsWith("/") ? raw : `/${raw}`;
+  return `${origin}${path}`;
 }
 
 export default function DonationsPage() {

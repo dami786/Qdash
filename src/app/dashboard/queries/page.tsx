@@ -333,7 +333,9 @@ export default function QueriesPage() {
                             {statusLabels[q.status]}
                           </span>
                         </td>
-                        <td className="py-3 px-4 text-slate-600">{formatDate(q.created_at)}</td>
+                        <td className="py-3 px-4 text-slate-600">
+                          {formatDate(q.createdAt || q.created_at || (q as any).date)}
+                        </td>
                         <td className="py-3 px-4 whitespace-nowrap align-middle">
                           <div className="flex items-center justify-center gap-2">
                             {isPending && (
