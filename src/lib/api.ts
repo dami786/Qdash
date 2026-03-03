@@ -112,10 +112,10 @@ export async function deleteItem(id: string): Promise<void> {
   await request(`/items/${id}`, { method: "DELETE" });
 }
 
-// ——— Trials (Free Trials) ———
+// ——— Trials (Free Trials / Register Now) ———
 // GET /trials – sari entries (Bearer token)
 // DELETE /trials/:id – kisi ek ko delete
-export type TrialStatus = "pending" | "free_trial" | "pro";
+export type TrialStatus = "pending" | "free_trial" | "pro" | "approved" | "rejected";
 
 export interface Trial {
   id: string;
@@ -135,6 +135,16 @@ export interface Trial {
 
 export async function fetchTrials(): Promise<Trial[]> {
   const raw = await request<(Trial & { _id?: string })[]>("/trials");
+  const list = Array.isArray(raw) ? raw : [];
+  return list.map((t) => ({
+    ...t,
+    id: t.id || t._id || "",
+  }));
+}
+
+// Sirf Register Now trials – GET /trials/register-now
+export async function fetchRegisterNowTrials(): Promise<Trial[]> {
+  const raw = await request<(Trial & { _id?: string })[]>("/trials/register-now");
   const list = Array.isArray(raw) ? raw : [];
   return list.map((t) => ({
     ...t,
@@ -192,6 +202,7 @@ export type QueryStatus = "pending" | "accepted" | "rejected";
 // }
 export interface Query {
   id: string;
+  _id?: string;
   name?: string;
   email?: string;
   phone?: string;
@@ -205,11 +216,31 @@ export interface Query {
 }
 
 export async function fetchQueries(): Promise<Query[]> {
-  return request<Query[]>("/queries");
+  const raw = await request<(Query & { _id?: string })[]>("/queries");
+  const list = Array.isArray(raw) ? raw : [];
+  return list.map((q) => ({
+    ...q,
+    id: q.id || q._id || "",
+  }));
 }
 
 export async function updateQuery(id: string, data: { status?: QueryStatus; reply?: string }): Promise<Query> {
   return request<Query>(`/queries/${id}`, { method: "PATCH", body: data });
+}
+
+export async function createQuery(data: {
+  name?: string;
+  email?: string;
+  phone?: string;
+  message?: string;
+  package?: string;
+  course?: string;
+}): Promise<Query> {
+  return request<Query>("/queries", { method: "POST", body: data });
+}
+
+export async function deleteQuery(id: string): Promise<void> {
+  await request(`/queries/${id}`, { method: "DELETE" });
 }
 
 // ——— Students ———
@@ -353,3 +384,35 @@ export async function fetchUsers(): Promise<User[]> {
 export async function updateUserRole(id: string, role: UserRole): Promise<User> {
   return request<User>(`/auth/users/${id}/role`, { method: "PATCH", body: { role } });
 }
+
+// ——— Notifications ———
+export interface Notification {
+  id: string;
+  _id?: string;
+  title?: string;
+  message?: string;
+  type?: string;
+  read?: boolean;
+  is_read?: boolean;
+  created_at?: string;
+  createdAt?: string;
+}
+
+export async function fetchNotifications(onlyUnread = false): Promise<Notification[]> {
+  const path = onlyUnread ? "/notifications?onlyUnread=true" : "/notifications";
+  const raw = await request<(Notification & { _id?: string })[]>(path);
+  const list = Array.isArray(raw) ? raw : [];
+  return list.map((n) => ({
+    ...n,
+    id: n.id || n._id || "",
+  }));
+}
+
+export async function markNotificationRead(id: string): Promise<Notification> {
+  return request<Notification>(`/notifications/${id}/read`, { method: "PATCH" });
+}
+
+export async function markAllNotificationsRead(): Promise<void> {
+  await request("/notifications/mark-all-read", { method: "PATCH" });
+}
+

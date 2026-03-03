@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { clearToken } from "@/lib/api";
+import { clearToken, fetchNotifications, type Notification } from "@/lib/api";
 
 const navCategories = [
   {
@@ -12,6 +12,7 @@ const navCategories = [
       { href: "/dashboard", label: "Overview", icon: LayoutIcon },
       { href: "/dashboard/students", label: "Students", icon: BookIcon },
       { href: "/dashboard/trials", label: "Free Trials", icon: UserPlusIcon },
+      { href: "/dashboard/notifications", label: "Notifications", icon: BellIcon },
     ],
   },
   {
@@ -25,6 +26,7 @@ const navCategories = [
     label: "Enquiries",
     items: [
       { href: "/dashboard/queries", label: "Queries", icon: ChatIcon },
+      { href: "/dashboard/registrations", label: "Registrations", icon: UserPlusIcon },
       { href: "/dashboard/donations", label: "Donations", icon: HeartIcon },
     ],
   },
@@ -69,6 +71,17 @@ function ChatIcon({ className }: { className?: string }) {
     </svg>
   );
 }
+function BellIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0a3 3 0 11-6 0h6z"
+      />
+    </svg>
+  );
+}
 function LogoutIcon({ className }: { className?: string }) {
   return (
     <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -91,6 +104,29 @@ function CloseIcon({ className }: { className?: string }) {
   );
 }
 
+function formatRelativeTime(dateString: string): string {
+  try {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffSec = Math.floor(diffMs / 1000);
+    if (diffSec < 60) return "just now";
+    const diffMin = Math.floor(diffSec / 60);
+    if (diffMin < 60) return `${diffMin} min ago`;
+    const diffHr = Math.floor(diffMin / 60);
+    if (diffHr < 24) return `${diffHr} hr ago`;
+    const diffDay = Math.floor(diffHr / 24);
+    if (diffDay < 7) return `${diffDay} days ago`;
+    return date.toLocaleDateString("en-PK", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
+  } catch {
+    return "—";
+  }
+}
+
 export default function DashboardLayout({
   children,
 }: {
@@ -99,10 +135,34 @@ export default function DashboardLayout({
   const pathname = usePathname();
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
 
   useEffect(() => {
     setSidebarOpen(false);
   }, [pathname]);
+
+  useEffect(() => {
+    // Load notifications for top-right bell dropdown
+    fetchNotifications()
+      .then((list) => {
+        if (Array.isArray(list)) {
+          setNotifications(list);
+          const unread = list.filter(
+            (n) => n.read === false || n.is_read === false || (!n.read && !n.is_read)
+          ).length;
+          setUnreadCount(unread);
+        } else {
+          setNotifications([]);
+          setUnreadCount(0);
+        }
+      })
+      .catch(() => {
+        setNotifications([]);
+        setUnreadCount(0);
+      });
+  }, []);
 
   function handleLogout() {
     clearToken();
@@ -146,13 +206,13 @@ export default function DashboardLayout({
             <CloseIcon className="w-5 h-5" />
           </button>
         </div>
-        <nav className="flex-1 p-3 overflow-y-auto overflow-x-hidden scrollbar-thin min-h-0 flex flex-col gap-6">
+        <nav className="flex-1 px-3 py-2 overflow-y-auto overflow-x-hidden scrollbar-thin min-h-0 flex flex-col gap-4">
           {navCategories.map((cat) => (
             <div key={cat.label}>
-              <p className="px-3 mb-2 text-xs font-semibold uppercase tracking-wider text-primary-300/90">
+              <p className="px-2 mb-1 text-[10px] font-semibold uppercase tracking-wider text-primary-300/90">
                 {cat.label}
               </p>
-              <div className="space-y-1">
+              <div className="space-y-0.5">
                 {cat.items.map((item) => {
                   const active = pathname === item.href;
                   const Icon = item.icon;
@@ -160,7 +220,7 @@ export default function DashboardLayout({
                     <Link
                       key={item.href}
                       href={item.href}
-                      className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${
+                      className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[13px] font-medium transition-all duration-200 ${
                         active
                           ? "bg-primary-600 text-white shadow-card"
                           : "text-primary-100 hover:bg-primary-700/70 hover:text-white"
@@ -190,17 +250,83 @@ export default function DashboardLayout({
       <main className="lg:ml-64 min-h-screen flex flex-col min-w-0 overflow-hidden">
         <header className="shrink-0 z-10 glass border-b border-slate-200/80">
           <div className="h-14 sm:h-16 px-4 sm:px-6 md:px-8 flex items-center gap-3">
-            <button
-              type="button"
-              aria-label="Open menu"
-              className="lg:hidden p-2 -ml-1 rounded-lg text-slate-600 hover:bg-slate-200/80 transition-colors"
-              onClick={() => setSidebarOpen(true)}
-            >
-              <MenuIcon className="w-6 h-6" />
-            </button>
-            <p className="text-slate-500 text-sm font-medium">
-              Welcome back
-            </p>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                aria-label="Open menu"
+                className="lg:hidden p-2 -ml-1 rounded-lg text-slate-600 hover:bg-slate-200/80 transition-colors"
+                onClick={() => setSidebarOpen(true)}
+              >
+                <MenuIcon className="w-6 h-6" />
+              </button>
+              <p className="text-slate-500 text-sm font-medium">
+                Welcome back
+              </p>
+            </div>
+
+            <div className="ml-auto flex items-center gap-2 relative">
+              <button
+                type="button"
+                aria-label="Notifications"
+                onClick={() => setNotificationsOpen((open) => !open)}
+                className="relative inline-flex items-center justify-center rounded-full p-2.5 text-slate-600 hover:bg-slate-200/80 transition-colors"
+              >
+                <BellIcon className="w-5 h-5" />
+                {unreadCount > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 inline-flex min-w-[18px] h-[18px] items-center justify-center rounded-full bg-red-500 text-[10px] font-semibold text-white px-1">
+                    {unreadCount > 9 ? "9+" : unreadCount}
+                  </span>
+                )}
+              </button>
+
+              {notificationsOpen && (
+                <div className="absolute right-0 top-full mt-2 w-80 max-h-96 bg-white border border-slate-200 rounded-2xl shadow-lg overflow-hidden z-20">
+                  <div className="px-3 py-2 border-b border-slate-200 flex items-center justify-between">
+                    <span className="text-xs font-semibold text-slate-700">
+                      Notifications
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => router.push("/dashboard/notifications")}
+                      className="text-[11px] font-medium text-primary-600 hover:text-primary-700"
+                    >
+                      View all
+                    </button>
+                  </div>
+                  <div className="max-h-80 overflow-y-auto">
+                    {notifications.length === 0 ? (
+                      <div className="px-3 py-4 text-center text-xs text-slate-500">
+                        No notifications yet.
+                      </div>
+                    ) : (
+                      notifications.slice(0, 7).map((n) => {
+                        const isRead = n.read === true || n.is_read === true;
+                        const created = n.createdAt || n.created_at || "";
+                        return (
+                          <div
+                            key={n.id}
+                            className={`px-3 py-2.5 text-xs border-b border-slate-100 last:border-0 ${
+                              isRead ? "bg-white" : "bg-indigo-50/70"
+                            }`}
+                          >
+                            <div className="font-semibold text-slate-800 truncate">
+                              {n.title || "Notification"}
+                            </div>
+                            <div className="text-slate-600 text-[11px] line-clamp-2">
+                              {n.message || "—"}
+                            </div>
+                            <div className="mt-1 flex items-center justify-between text-[10px] text-slate-400">
+                              <span>{created ? formatRelativeTime(created) : "—"}</span>
+                              {!isRead && <span className="text-emerald-600 font-semibold">New</span>}
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </header>
         <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
@@ -210,3 +336,4 @@ export default function DashboardLayout({
     </div>
   );
 }
+

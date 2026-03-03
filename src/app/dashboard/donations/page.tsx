@@ -20,11 +20,11 @@ function resolveReceiptUrl(raw?: string | null): string | null {
   if (!raw) return null;
   if (raw.startsWith("http://") || raw.startsWith("https://")) return raw;
 
-  // Build absolute URL from API base, stripping trailing /api if present
-  const apiBase = process.env.NEXT_PUBLIC_API_URL || "https://quranacd-production-ddd5.up.railway.app/api";
-  const baseOrigin = apiBase.replace(/\/api\/?$/, "");
+  // Build absolute URL from API base (keep /api so relative paths like /uploads/... work)
+  const apiBase =
+    process.env.NEXT_PUBLIC_API_URL || "https://quranacd-production-ddd5.up.railway.app/api";
   const path = raw.startsWith("/") ? raw : `/${raw}`;
-  return `${baseOrigin}${path}`;
+  return `${apiBase}${path}`;
 }
 
 export default function DonationsPage() {

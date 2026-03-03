@@ -1,9 +1,15 @@
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
-import { fetchTrials, deleteTrial, type Trial } from "@/lib/api";
+import { useEffect, useState } from "react";
+import {
+  fetchRegisterNowTrials,
+  updateTrialStatus,
+  deleteTrial,
+  type Trial,
+  type TrialStatus,
+} from "@/lib/api";
 
-const statusLabels: Record<Trial["status"], string> = {
+const statusLabels: Record<TrialStatus, string> = {
   pending: "Pending",
   free_trial: "Free trial",
   pro: "Pro",
@@ -24,34 +30,46 @@ function formatDate(s?: string) {
   }
 }
 
-export default function TrialsPage() {
+export default function RegistrationsPage() {
   const [trials, setTrials] = useState<Trial[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
-    fetchTrials()
+    fetchRegisterNowTrials()
       .then((data) => setTrials(Array.isArray(data) ? data : []))
       .catch(() => setTrials([]))
       .finally(() => setLoading(false));
   }, []);
 
   const searchLower = search.trim().toLowerCase();
-  const filteredTrials = trials
-    .filter((t) => (t.source ?? "").toLowerCase() !== "register_now")
-    .filter((t) =>
-      !searchLower
-        ? true
-        : (t.name ?? "").toLowerCase().includes(searchLower) ||
-          (t.email ?? "").toLowerCase().includes(searchLower) ||
-          (t.phone ?? "").toLowerCase().includes(searchLower) ||
-          (t.course ?? "").toLowerCase().includes(searchLower) ||
-          (t.message ?? "").toLowerCase().includes(searchLower) ||
-          (t.status ?? "").toLowerCase().includes(searchLower) ||
-          (t.source ?? "").toLowerCase().includes(searchLower)
-    );
+  const filteredTrials = trials.filter((t) =>
+    !searchLower
+      ? true
+      : (t.name ?? "").toLowerCase().includes(searchLower) ||
+        (t.email ?? "").toLowerCase().includes(searchLower) ||
+        (t.phone ?? "").toLowerCase().includes(searchLower) ||
+        (t.course ?? "").toLowerCase().includes(searchLower) ||
+        (t.message ?? "").toLowerCase().includes(searchLower) ||
+        (t.status ?? "").toLowerCase().includes(searchLower) ||
+        (t.source ?? "").toLowerCase().includes(searchLower)
+  );
+
+  async function handleStatusChange(id: string, status: TrialStatus) {
+    if (!id) return;
+    setUpdatingId(id);
+    try {
+      const updated = await updateTrialStatus(id, status);
+      setTrials((prev) => prev.map((t) => (t.id === id ? { ...t, ...updated } : t)));
+    } catch (err) {
+      console.error("Failed to update trial", err);
+    } finally {
+      setUpdatingId(null);
+    }
+  }
 
   function openDeletePopup(id: string) {
     setDeleteConfirmId(id);
@@ -75,10 +93,10 @@ export default function TrialsPage() {
     <div className="min-w-0">
       <div className="mb-6 sm:mb-8">
         <h1 className="text-xl sm:text-2xl font-bold text-slate-800 tracking-tight">
-          Free trials
+          Registrations
         </h1>
         <p className="text-slate-500 text-sm mt-1">
-          Free trial requests (excluding Register now)
+          Requests coming from the &quot;Register now&quot; form
         </p>
       </div>
 
@@ -88,7 +106,7 @@ export default function TrialsPage() {
         </div>
       ) : filteredTrials.length === 0 ? (
         <div className="bg-white rounded-2xl border border-slate-200/80 shadow-card p-10 text-center text-slate-500">
-          No free trial requests yet.
+          No registrations found.
         </div>
       ) : (
         <div className="bg-white rounded-2xl border border-slate-200/80 shadow-card overflow-hidden min-w-0">
@@ -120,9 +138,10 @@ export default function TrialsPage() {
                 {filteredTrials.map((t) => {
                   const created = t.createdAt || t.created_at || "";
                   const createdFormatted = created ? formatDate(created) : "—";
+                  const isPending = t.status === "pending";
                   return (
                     <tr
-                      key={t.id || t._id || ""}
+                      key={t.id || (t as Trial & { _id?: string })._id || ""}
                       className="border-b border-slate-100 last:border-0 hover:bg-slate-50/50"
                     >
                       <td className="py-3 px-4 font-medium text-slate-800">{t.name || "—"}</td>
@@ -148,6 +167,36 @@ export default function TrialsPage() {
                         {createdFormatted}
                       </td>
                       <td className="py-3 px-4 text-right space-x-2 whitespace-nowrap">
+                        {isPending && (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => handleStatusChange(t.id, "approved")}
+                              disabled={!!updatingId}
+                              className="inline-flex items-center px-2.5 py-1.5 rounded-lg text-xs font-medium bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50"
+                            >
+                              {updatingId === t.id ? "Saving..." : "Approve"}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleStatusChange(t.id, "rejected")}
+                              disabled={!!updatingId}
+                              className="inline-flex items-center px-2.5 py-1.5 rounded-lg text-xs font-medium bg-red-600 text-white hover:bg-red-700 disabled:opacity-50"
+                            >
+                              {updatingId === t.id ? "Saving..." : "Reject"}
+                            </button>
+                          </>
+                        )}
+                        {!isPending && (
+                          <button
+                            type="button"
+                            onClick={() => handleStatusChange(t.id, "pending")}
+                            disabled={!!updatingId}
+                            className="inline-flex items-center px-2.5 py-1.5 rounded-lg text-xs font-medium bg-slate-600 text-white hover:bg-slate-700 disabled:opacity-50"
+                          >
+                            {updatingId === t.id ? "Saving..." : "Reset"}
+                          </button>
+                        )}
                         <button
                           type="button"
                           onClick={() => openDeletePopup(t.id)}
@@ -174,33 +223,6 @@ export default function TrialsPage() {
                 })}
               </tbody>
             </table>
-          </div>
-        </div>
-      )}
-
-      {deleteConfirmId && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-card border border-slate-200/80 w-full max-w-sm p-6">
-            <h3 className="text-lg font-semibold text-slate-800 mb-2">Delete trial?</h3>
-            <p className="text-slate-600 text-sm mb-6">Are you sure? This cannot be undone.</p>
-            <div className="flex gap-3 justify-end">
-              <button
-                type="button"
-                onClick={() => setDeleteConfirmId(null)}
-                disabled={deleting}
-                className="px-4 py-2.5 border border-slate-300 text-slate-700 rounded-xl hover:bg-slate-50 font-medium disabled:opacity-50"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={confirmDelete}
-                disabled={deleting}
-                className="px-4 py-2.5 bg-red-600 text-white rounded-xl hover:bg-red-700 font-medium disabled:opacity-50"
-              >
-                {deleting ? "Deleting..." : "Delete"}
-              </button>
-            </div>
           </div>
         </div>
       )}
