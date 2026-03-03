@@ -1,9 +1,14 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { clearToken, fetchNotifications, type Notification } from "@/lib/api";
+import {
+  clearToken,
+  fetchNotifications,
+  markNotificationRead,
+  type Notification,
+} from "@/lib/api";
 
 const navCategories = [
   {
@@ -138,6 +143,9 @@ export default function DashboardLayout({
   const [unreadCount, setUnreadCount] = useState(0);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [dropdownUpdatingId, setDropdownUpdatingId] = useState<string | null>(null);
+  const bellRef = useRef<HTMLButtonElement | null>(null);
+  const dropdownRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     setSidebarOpen(false);
@@ -150,7 +158,7 @@ export default function DashboardLayout({
         if (Array.isArray(list)) {
           setNotifications(list);
           const unread = list.filter(
-            (n) => n.read === false || n.is_read === false || (!n.read && !n.is_read)
+            (n) => n.read !== true && n.is_read !== true && n.isRead !== true
           ).length;
           setUnreadCount(unread);
         } else {
@@ -163,6 +171,19 @@ export default function DashboardLayout({
         setUnreadCount(0);
       });
   }, []);
+
+  // Close notifications dropdown when clicking outside
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (!notificationsOpen) return;
+      const target = e.target as Node;
+      if (bellRef.current?.contains(target)) return;
+      if (dropdownRef.current?.contains(target)) return;
+      setNotificationsOpen(false);
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [notificationsOpen]);
 
   function handleLogout() {
     clearToken();
@@ -269,6 +290,7 @@ export default function DashboardLayout({
                 type="button"
                 aria-label="Notifications"
                 onClick={() => setNotificationsOpen((open) => !open)}
+                ref={bellRef}
                 className="relative inline-flex items-center justify-center rounded-full p-2.5 text-slate-600 hover:bg-slate-200/80 transition-colors"
               >
                 <BellIcon className="w-5 h-5" />
@@ -280,18 +302,29 @@ export default function DashboardLayout({
               </button>
 
               {notificationsOpen && (
-                <div className="absolute right-0 top-full mt-2 w-80 max-h-96 bg-white border border-slate-200 rounded-2xl shadow-lg overflow-hidden z-20">
+                <div
+                  ref={dropdownRef}
+                  className="absolute right-0 top-full mt-2 w-80 max-h-96 bg-white border border-slate-200 rounded-2xl shadow-lg overflow-hidden z-20"
+                >
                   <div className="px-3 py-2 border-b border-slate-200 flex items-center justify-between">
-                    <span className="text-xs font-semibold text-slate-700">
-                      Notifications
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => router.push("/dashboard/notifications")}
-                      className="text-[11px] font-medium text-primary-600 hover:text-primary-700"
-                    >
-                      View all
-                    </button>
+                    <span className="text-xs font-semibold text-slate-700">Notifications</span>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => router.push("/dashboard/notifications")}
+                        className="text-[11px] font-medium text-primary-600 hover:text-primary-700"
+                      >
+                        View all
+                      </button>
+                      <button
+                        type="button"
+                        aria-label="Close notifications"
+                        onClick={() => setNotificationsOpen(false)}
+                        className="p-1 rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-100"
+                      >
+                        <CloseIcon className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                   </div>
                   <div className="max-h-80 overflow-y-auto">
                     {notifications.length === 0 ? (
@@ -300,7 +333,8 @@ export default function DashboardLayout({
                       </div>
                     ) : (
                       notifications.slice(0, 7).map((n) => {
-                        const isRead = n.read === true || n.is_read === true;
+                        const isRead =
+                          n.read === true || n.is_read === true || n.isRead === true;
                         const created = n.createdAt || n.created_at || "";
                         return (
                           <div
@@ -317,7 +351,40 @@ export default function DashboardLayout({
                             </div>
                             <div className="mt-1 flex items-center justify-between text-[10px] text-slate-400">
                               <span>{created ? formatRelativeTime(created) : "—"}</span>
-                              {!isRead && <span className="text-emerald-600 font-semibold">New</span>}
+                              {!isRead && (
+                                <button
+                                  type="button"
+                                  onClick={async () => {
+                                    if (!n.id) return;
+                                    setDropdownUpdatingId(n.id);
+                                    try {
+                                      const updated = await markNotificationRead(n.id);
+                                      setNotifications((prev) =>
+                                        prev.map((x) =>
+                                          x.id === n.id
+                                            ? {
+                                                ...x,
+                                                ...updated,
+                                                read: true,
+                                                is_read: true,
+                                                isRead: true,
+                                              }
+                                            : x
+                                        )
+                                      );
+                                      setUnreadCount((prev) => Math.max(0, prev - 1));
+                                    } catch (err) {
+                                      console.error("Failed to mark notification read", err);
+                                    } finally {
+                                      setDropdownUpdatingId(null);
+                                    }
+                                  }}
+                                  disabled={dropdownUpdatingId === n.id}
+                                  className="text-emerald-600 font-semibold hover:text-emerald-700 disabled:opacity-50"
+                                >
+                                  {dropdownUpdatingId === n.id ? "Saving..." : "Mark read"}
+                                </button>
+                              )}
                             </div>
                           </div>
                         );

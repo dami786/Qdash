@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { fetchDonations, type Donation } from "@/lib/api";
+import { fetchDonations, deleteDonation, type Donation } from "@/lib/api";
 
 function formatDate(s?: string) {
   if (!s) return "—";
@@ -16,15 +16,11 @@ function formatDate(s?: string) {
   }
 }
 
-function resolveReceiptUrl(raw?: string | null): string | null {
-  if (!raw) return null;
-  if (raw.startsWith("http://") || raw.startsWith("https://")) return raw;
-
-  // Build absolute URL from API base (keep /api so relative paths like /uploads/... work)
-  const apiBase =
-    process.env.NEXT_PUBLIC_API_URL || "https://quranacd-production-ddd5.up.railway.app/api";
-  const path = raw.startsWith("/") ? raw : `/${raw}`;
-  return `${apiBase}${path}`;
+// For donations we trust backend's receiptUrl as-is
+function getReceiptUrl(d: Donation): string | null {
+  const raw = (d as any).receiptUrl ?? d.receipt_url ?? d.receipt ?? null;
+  if (!raw || typeof raw !== "string") return null;
+  return raw;
 }
 
 export default function DonationsPage() {
@@ -32,6 +28,8 @@ export default function DonationsPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [previewReceipt, setPreviewReceipt] = useState<string | null>(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     fetchDonations()
@@ -54,6 +52,25 @@ export default function DonationsPage() {
         )
       : donations
   );
+
+  function openDeletePopup(id: string | undefined) {
+    if (!id) return;
+    setDeleteConfirmId(id);
+  }
+
+  async function confirmDelete() {
+    if (!deleteConfirmId) return;
+    setDeleting(true);
+    try {
+      await deleteDonation(deleteConfirmId);
+      setDonations((prev) => prev.filter((d) => d.id !== deleteConfirmId));
+      setDeleteConfirmId(null);
+    } catch (err) {
+      console.error("Failed to delete donation", err);
+    } finally {
+      setDeleting(false);
+    }
+  }
 
   return (
     <div className="min-w-0">
@@ -82,7 +99,7 @@ export default function DonationsPage() {
             />
           </div>
           <div className="overflow-x-auto overflow-y-auto max-h-[65vh] scrollbar-hide">
-            <table className="table-modern w-full min-w-[600px]">
+            <table className="table-modern w-full min-w-[650px]">
               <thead className="bg-slate-50/80 border-b border-slate-200">
                 <tr>
                   <th className="text-left py-3 px-4 text-slate-600 font-medium">Name</th>
@@ -91,6 +108,7 @@ export default function DonationsPage() {
                   <th className="text-left py-3 px-4 text-slate-600 font-medium">Donate Type</th>
                   <th className="text-left py-3 px-4 text-slate-600 font-medium">Receipt</th>
                   <th className="text-left py-3 px-4 text-slate-600 font-medium">Date</th>
+                  <th className="text-center py-3 px-4 text-slate-600 font-medium">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -101,24 +119,34 @@ export default function DonationsPage() {
                     </td>
                   </tr>
                 ) : (
-                  filteredDonations.map((d) => (
-                    <tr key={d.id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50/50">
-                      <td className="py-3 px-4 font-medium text-slate-800">
-                        {d.name || d.donor_name || "—"}
-                      </td>
-                      <td className="py-3 px-4 text-slate-600">{d.phone || "—"}</td>
-                      <td className="py-3 px-4 text-slate-800 font-medium">
-                        {d.amount != null ? `Rs ${d.amount.toLocaleString()}` : "—"}
-                      </td>
-                      <td className="py-3 px-4 text-slate-600 max-w-xs truncate" title={d.donateType ?? d.donate_type}>
-                        {d.donateType ?? d.donate_type ?? "—"}
-                      </td>
-                      <td className="py-3 px-4 text-slate-600">
-                        {(() => {
-                          const receiptUrl = resolveReceiptUrl(
-                            d.receipt ?? d.receipt_url ?? d.receiptUrl ?? null
-                          );
-                          return receiptUrl ? (
+                  filteredDonations.map((d) => {
+                    const amountNumber =
+                      typeof d.amount === "string"
+                        ? Number(d.amount.replace(/,/g, "")) || undefined
+                        : d.amount;
+                    const dateValue =
+                      d.created_at ?? d.createdAt ?? d.date ?? d.submitted_at ?? d.submittedAt;
+                    const receiptUrl = getReceiptUrl(d);
+                    return (
+                      <tr
+                        key={d.id}
+                        className="border-b border-slate-100 last:border-0 hover:bg-slate-50/50"
+                      >
+                        <td className="py-3 px-4 font-medium text-slate-800">
+                          {d.name || d.donor_name || "—"}
+                        </td>
+                        <td className="py-3 px-4 text-slate-600">{d.phone || "—"}</td>
+                        <td className="py-3 px-4 text-slate-800 font-medium">
+                          {amountNumber != null ? `Rs ${amountNumber.toLocaleString()}` : "—"}
+                        </td>
+                        <td
+                          className="py-3 px-4 text-slate-600 max-w-xs truncate"
+                          title={d.donateType ?? d.donate_type}
+                        >
+                          {d.donateType ?? d.donate_type ?? "—"}
+                        </td>
+                        <td className="py-3 px-4 text-slate-600">
+                          {receiptUrl ? (
                             <button
                               type="button"
                               onClick={() => setPreviewReceipt(receiptUrl)}
@@ -132,16 +160,36 @@ export default function DonationsPage() {
                             </button>
                           ) : (
                             "—"
-                          );
-                        })()}
-                      </td>
-                      <td className="py-3 px-4 text-slate-600">
-                        {formatDate(
-                          d.created_at ?? d.createdAt ?? d.date ?? d.submitted_at ?? d.submittedAt
-                        )}
-                      </td>
-                    </tr>
-                  ))
+                          )}
+                        </td>
+                        <td className="py-3 px-4 text-slate-600">
+                          {formatDate(dateValue)}
+                        </td>
+                        <td className="py-3 px-4 text-center align-middle">
+                          <button
+                            type="button"
+                            onClick={() => openDeletePopup(d.id)}
+                            className="inline-flex items-center justify-center p-1.5 rounded-lg text-red-600 hover:bg-red-50"
+                            title="Delete"
+                          >
+                            <svg
+                              className="w-4 h-4"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              stroke="currentColor"
+                              strokeWidth={2}
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                              />
+                            </svg>
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })
                 )}
               </tbody>
             </table>
@@ -172,6 +220,33 @@ export default function DonationsPage() {
             className="max-h-[90vh] max-w-full object-contain rounded-lg shadow-xl"
             onClick={(e) => e.stopPropagation()}
           />
+        </div>
+      )}
+
+      {deleteConfirmId && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-card border border-slate-200/80 w-full max-w-sm p-6">
+            <h3 className="text-lg font-semibold text-slate-800 mb-2">Delete donation?</h3>
+            <p className="text-slate-600 text-sm mb-6">Are you sure? This cannot be undone.</p>
+            <div className="flex gap-3 justify-end">
+              <button
+                type="button"
+                onClick={() => setDeleteConfirmId(null)}
+                disabled={deleting}
+                className="px-4 py-2.5 border border-slate-300 text-slate-700 rounded-xl hover:bg-slate-50 font-medium disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={confirmDelete}
+                disabled={deleting}
+                className="px-4 py-2.5 bg-red-600 text-white rounded-xl hover:bg-red-700 font-medium disabled:opacity-50"
+              >
+                {deleting ? "Deleting..." : "Delete"}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

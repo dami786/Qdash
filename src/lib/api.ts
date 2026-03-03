@@ -153,11 +153,11 @@ export async function fetchRegisterNowTrials(): Promise<Trial[]> {
 }
 
 export async function updateTrialStatus(id: string, status: TrialStatus): Promise<Trial> {
-  return request<Trial>(`/trials/${id}`, { method: "PATCH", body: { status } });
+  return request<Trial>(`/trials/${encodeURIComponent(id)}`, { method: "PATCH", body: { status } });
 }
 
 export async function deleteTrial(id: string): Promise<void> {
-  await request(`/trials/${id}`, { method: "DELETE" });
+  await request(`/trials/${encodeURIComponent(id)}`, { method: "DELETE" });
 }
 
 // ——— Donations ———
@@ -165,10 +165,11 @@ export async function deleteTrial(id: string): Promise<void> {
 // GET /donations response fields (camelCase or snake_case from backend):
 export interface Donation {
   id: string;
+  _id?: string;
   name?: string;
   donor_name?: string;
   phone?: string;
-  amount?: number;
+  amount?: number | string;
   donateType?: string;
   donate_type?: string;
   // Backend might return full URL or relative path, sometimes with different keys
@@ -185,7 +186,22 @@ export interface Donation {
 }
 
 export async function fetchDonations(): Promise<Donation[]> {
-  return request<Donation[]>("/donations");
+  const raw = await request<(Donation & { _id?: string; amount?: number | string })[]>(
+    "/donations"
+  );
+  const list = Array.isArray(raw) ? raw : [];
+  return list.map((d) => ({
+    ...d,
+    id: d.id || d._id || "",
+    amount:
+      typeof d.amount === "string"
+        ? Number(d.amount.replace(/,/g, "")) || undefined
+        : d.amount,
+  }));
+}
+
+export async function deleteDonation(id: string): Promise<void> {
+  await request(`/donations/${encodeURIComponent(id)}`, { method: "DELETE" });
 }
 
 // ——— Queries (Chat / Contact / Packages) ———
@@ -392,24 +408,46 @@ export interface Notification {
   title?: string;
   message?: string;
   type?: string;
+  // Various backends might use different fields for read state
   read?: boolean;
   is_read?: boolean;
+  isRead?: boolean;
+  readAt?: string;
+  read_at?: string;
+  status?: string;
   created_at?: string;
   createdAt?: string;
+}
+
+function normalizeNotification(n: Notification & { _id?: string }): Notification {
+  const status = (n.status || "").toLowerCase();
+  const isRead =
+    n.read === true ||
+    n.is_read === true ||
+    n.isRead === true ||
+    !!n.readAt ||
+    !!n.read_at ||
+    status === "read";
+
+  return {
+    ...n,
+    id: n.id || n._id || "",
+    read: isRead,
+    is_read: isRead,
+    isRead,
+  };
 }
 
 export async function fetchNotifications(onlyUnread = false): Promise<Notification[]> {
   const path = onlyUnread ? "/notifications?onlyUnread=true" : "/notifications";
   const raw = await request<(Notification & { _id?: string })[]>(path);
   const list = Array.isArray(raw) ? raw : [];
-  return list.map((n) => ({
-    ...n,
-    id: n.id || n._id || "",
-  }));
+  return list.map((n) => normalizeNotification(n));
 }
 
 export async function markNotificationRead(id: string): Promise<Notification> {
-  return request<Notification>(`/notifications/${id}/read`, { method: "PATCH" });
+  const updated = await request<Notification>(`/notifications/${id}/read`, { method: "PATCH" });
+  return normalizeNotification(updated as Notification & { _id?: string });
 }
 
 export async function markAllNotificationsRead(): Promise<void> {

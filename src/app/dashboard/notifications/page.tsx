@@ -36,9 +36,7 @@ export default function NotificationsPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  const unreadCount = notifications.filter(
-    (n) => n.read === false || n.is_read === false || (!n.read && !n.is_read)
-  ).length;
+  const unreadCount = notifications.filter((n) => n.read !== true && n.is_read !== true && n.isRead !== true).length;
 
   async function handleMarkRead(id: string) {
     if (!id) return;
@@ -130,7 +128,7 @@ export default function NotificationsPage() {
                 {notifications.map((n) => {
                   const created = n.createdAt || n.created_at || "";
                   const createdFormatted = created ? formatDate(created) : "—";
-                  const isRead = n.read === true || n.is_read === true;
+                  const isRead = n.read === true || n.is_read === true || n.isRead === true;
                   return (
                     <tr
                       key={n.id}
@@ -141,7 +139,7 @@ export default function NotificationsPage() {
                       <td className="py-3 px-4 font-medium text-slate-800">
                         {n.title || "—"}
                       </td>
-                      <td className="py-3 px-4 text-slate-600 max-w-md truncate" title={n.message}>
+                      <td className="py-3 px-4 text-slate-600 whitespace-pre-line">
                         {n.message || "—"}
                       </td>
                       <td className="py-3 px-4 text-slate-600">{n.type || "—"}</td>
